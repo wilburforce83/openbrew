@@ -1,46 +1,37 @@
-
 <!DOCTYPE html>
 <html>
 <head>
-  <meta charset="UTF-8">
-  <title>Brew SCADA Dashboard</title>
+  <meta charset="utf-8">
+  <title>Brew SCADA</title>
   <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/uikit@3.15.10/dist/css/uikit.min.css" />
   <script src="https://cdn.jsdelivr.net/npm/uikit@3.15.10/dist/js/uikit.min.js"></script>
   <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
   <link rel="stylesheet" href="css/style.css">
 </head>
 <body>
-  <div class="uk-container">
-    <h1 class="uk-heading-line"><span>Brew SCADA Dashboard</span></h1>
-
-    <div class="uk-grid uk-grid-small uk-child-width-1-2@m">
-      <div>
-        <div class="uk-card uk-card-default uk-card-body">
-          <h3>Fermenter Overview</h3>
-          <div id="fermenter-diagram">
-            <!-- Placeholder for fermenter SVG/diagram -->
-            <div class="uk-text-center uk-text-bold">[Fermenter Diagram Here]</div>
-          </div>
-        </div>
-      </div>
-      <div>
-        <div class="uk-card uk-card-primary uk-card-body">
-          <h3>Current Readings</h3>
-          <ul class="uk-list uk-list-divider">
-            <li>Temperature: <span id="temp">--</span> °C</li>
-            <li>Pressure: <span id="pressure">--</span> bar</li>
-            <li>Specific Gravity: <span id="sg">--</span></li>
-            <li>ABV (Est.): <span id="abv">--</span> %</li>
-            <li>Elapsed Time: <span id="elapsed">--</span></li>
-            <li>Time to Completion (Est.): <span id="timeToComp">--</span></li>
-          </ul>
-        </div>
-      </div>
+  <div id="login-screen" class="uk-flex uk-flex-center uk-flex-middle" style="height:100vh;">
+    <div class="uk-card uk-card-default uk-card-body uk-width-medium">
+      <h3>Login</h3>
+      <form id="loginForm">
+        <input class="uk-input uk-margin" type="password" id="password" placeholder="Password" />
+        <button class="uk-button uk-button-primary" type="submit">Login</button>
+      </form>
+      <div id="loginError" class="uk-text-danger uk-hidden">Invalid password</div>
     </div>
-
-    <div class="uk-margin">
-      <canvas id="trendChart" height="100"></canvas>
-    </div>
+  </div>
+  <div id="main-ui" class="uk-container uk-hidden">
+    <nav class="uk-navbar-container uk-navbar-dark" uk-navbar>
+      <div class="uk-navbar-left">
+        <ul class="uk-navbar-nav" id="navButtons">
+          <li><a href="#" data-view="scada">SCADA</a></li>
+          <li><a href="#" data-view="settings">Settings</a></li>
+          <li><a href="#" data-view="setpoints">Setpoints</a></li>
+          <li><a href="#" data-view="recipes">Recipe Builder</a></li>
+          <li><a href="#" data-view="history">Brew History</a></li>
+        </ul>
+      </div>
+    </nav>
+    <div id="content" class="uk-margin-top"></div>
   </div>
   <script src="/socket.io/socket.io.js"></script>
   <script src="js/app.js"></script>

@@ -1,73 +1,103 @@
+document.addEventListener('DOMContentLoaded', () => {
+  const socket = io();
+  const loginForm = document.getElementById('loginForm');
+  const loginScreen = document.getElementById('login-screen');
+  const mainUI = document.getElementById('main-ui');
+  const content = document.getElementById('content');
 
-const socket = io();
-const tempEl = document.getElementById('temp');
-const pressureEl = document.getElementById('pressure');
-const sgEl = document.getElementById('sg');
-const abvEl = document.getElementById('abv');
-const elapsedEl = document.getElementById('elapsed');
-const timeToCompEl = document.getElementById('timeToComp');
-
-let startTime = null;
-let startSG = null;
-
-function calcABV(originalSG, currentSG) {
-    return ((originalSG - currentSG) * 131).toFixed(2);
-}
-
-async function loadHistory() {
-    const res = await fetch('/api/readings/history');
-    const data = await res.json();
-    if (data.length > 0) {
-        startTime = new Date(data[0].timestamp);
-        startSG = data[0].sg;
-    }
-    updateChart(data);
-}
-
-function updateChart(data) {
-    const ctx = document.getElementById('trendChart').getContext('2d');
-    const labels = data.map(r => new Date(r.timestamp).toLocaleTimeString());
-    const tempData = data.map(r => r.temp);
-    const pressureData = data.map(r => r.pressure);
-    const sgData = data.map(r => r.sg);
-
-    if (window.trendChart) window.trendChart.destroy();
-    window.trendChart = new Chart(ctx, {
-        type: 'line',
-        data: {
-            labels: labels,
-            datasets: [
-                { label: 'Temperature (°C)', data: tempData, borderColor: 'red', yAxisID: 'y1' },
-                { label: 'Pressure (bar)', data: pressureData, borderColor: 'blue', yAxisID: 'y1' },
-                { label: 'SG', data: sgData, borderColor: 'green', yAxisID: 'y2' }
-            ]
-        },
-        options: {
-            responsive: true,
-            scales: {
-                y1: {
-                    type: 'linear',
-                    position: 'left'
-                },
-                y2: {
-                    type: 'linear',
-                    position: 'right'
-                }
-            }
-        }
+  loginForm.addEventListener('submit', async e => {
+    e.preventDefault();
+    const pwd = document.getElementById('password').value;
+    const res = await fetch('/api/login', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ password: pwd })
     });
-}
-
-socket.on('reading', (reading) => {
-    tempEl.textContent = reading.temp.toFixed(2);
-    pressureEl.textContent = reading.pressure.toFixed(2);
-    sgEl.textContent = reading.sg.toFixed(4);
-    if (startSG) abvEl.textContent = calcABV(startSG, reading.sg);
-    if (startTime) {
-        const elapsedMs = new Date() - startTime;
-        elapsedEl.textContent = (elapsedMs / 3600000).toFixed(1) + " hrs";
+    const json = await res.json();
+    if (json.success) {
+      loginScreen.classList.add('uk-hidden');
+      mainUI.classList.remove('uk-hidden');
+      loadView('scada');
+    } else {
+      document.getElementById('loginError').classList.remove('uk-hidden');
     }
-    loadHistory();
-});
+  });
 
-loadHistory();
+  document.getElementById('navButtons').addEventListener('click', e => {
+    if (e.target.dataset.view) {
+      loadView(e.target.dataset.view);
+    }
+  });
+
+  let chart;
+  function loadView(view) {
+    content.innerHTML = '';
+    if (view === 'scada') {
+      content.innerHTML = `
+        <div class="uk-grid uk-grid-small">
+          <div class="uk-width-1-3">
+            <div class="uk-card uk-card-default uk-card-body">
+              <div>Fermenter SVG here</div>
+            </div>
+          </div>
+          <div class="uk-width-1-3">
+            <div class="uk-card uk-card-default uk-card-body">
+              <div>Kettle SVG here</div>
+            </div>
+          </div>
+          <div class="uk-width-1-3">
+            <div class="uk-card uk-card-primary uk-card-body">
+              <ul class="uk-list uk-list-divider" id="readingsList"></ul>
+            </div>
+          </div>
+        </div>
+        <canvas id="trendChart" height="100"></canvas>
+      `;
+      initSCADA();
+    }
+    // TODO: settings, setpoints, recipes, history
+  }
+
+  function initSCADA() {
+    const list = document.getElementById('readingsList');
+    const ctx = document.getElementById('trendChart').getContext('2d');
+    chart = new Chart(ctx, {
+      type: 'line',
+      data: { labels: [], datasets: [] },
+      options: { responsive: true, scales: { y: { beginAtZero: true } } }
+    });
+    socket.on('reading', r => {
+      // Update list
+      list.innerHTML = `
+        <li>Temp: ${r.temp.toFixed(2)} °C</li>
+        <li>Ambient: ${r.ambient.toFixed(2)} °C</li>
+        <li>SG: ${r.sg.toFixed(4)}</li>
+        <li>pH: ${r.pH.toFixed(2)}</li>
+        <li>Pressure: ${r.pressure.toFixed(2)} bar</li>
+        <li>Bubbles/min: ${r.bubbles}</li>
+        <li>Heating: ${r.heating}</li>
+        <li>Cooling: ${r.cooling}</li>
+      `;
+      // Update chart
+      const time = new Date(r.timestamp).toLocaleTimeString();
+      if (chart.data.labels.length > 50) {
+        chart.data.labels.shift();
+        chart.data.datasets.forEach(ds => ds.data.shift());
+      }
+      if (!chart.data.datasets.length) {
+        chart.data.datasets.push(
+          { label: 'Temp', data: [], borderColor: 'cyan', yAxisID: 'y1' },
+          { label: 'SG', data: [], borderColor: 'lime', yAxisID: 'y2' }
+        );
+        chart.options.scales = {
+          y1: { type: 'linear', position: 'left' },
+          y2: { type: 'linear', position: 'right' }
+        };
+      }
+      chart.data.labels.push(time);
+      chart.data.datasets[0].data.push(r.temp);
+      chart.data.datasets[1].data.push(r.sg);
+      chart.update();
+    });
+  }
+});

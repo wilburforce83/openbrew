@@ -1,9 +1,13 @@
-
 const express = require('express');
-const { MongoClient } = require('mongodb');
 const http = require('http');
-const socketIo = require('socket.io');
 const path = require('path');
+const session = require('express-session');
+const { MongoClient } = require('mongodb');
+const socketIo = require('socket.io');
+
+const simulator = require('./simulator');
+const collector = require('./dataCollector');
+const settings = require('./settings');
 
 const app = express();
 const server = http.createServer(app);
@@ -13,61 +17,67 @@ const mongoUrl = 'mongodb://127.0.0.1:27017';
 const dbName = 'brew_scada';
 let db;
 
-const PORT = 3000;
+// Session for login
+app.use(session({
+  secret: 'scada-secret',
+  resave: false,
+  saveUninitialized: true
+}));
 
-// Serve static files
+app.use(express.json());
 app.use(express.static(path.join(__dirname, '../public')));
 
 // Connect to Mongo
-MongoClient.connect(mongoUrl)
-    .then(client => {
-        db = client.db(dbName);
-        console.log('Connected to MongoDB');
-        startMockDataGenerator();
-    })
-    .catch(err => console.error('MongoDB connection failed', err));
+MongoClient.connect(mongoUrl).then(client => {
+  db = client.db(dbName);
+  console.log('Connected to MongoDB');
+  // Initialize collections if needed
+  ['recipes', 'settings', 'brew_cycles'].forEach(col => {
+    db.collection(col);
+  });
+  // Start simulator and collector
+  simulator.start(io, db);
+  collector.start(io, db);
+}).catch(err => console.error(err));
 
-// API endpoint to fetch latest readings
-app.get('/api/readings/latest', async (req, res) => {
-    try {
-        const latest = await db.collection('readings').find().sort({timestamp: -1}).limit(1).toArray();
-        res.json(latest[0] || {});
-    } catch (err) {
-        res.status(500).json({ error: 'Failed to fetch latest readings' });
-    }
+// Login endpoint
+app.post('/api/login', (req, res) => {
+  const { password } = req.body;
+  if (password === 'brewmaster') {
+    req.session.authenticated = true;
+    res.json({ success: true });
+  } else {
+    res.json({ success: false });
+  }
 });
 
-// API endpoint to fetch historical data
-app.get('/api/readings/history', async (req, res) => {
-    try {
-        const history = await db.collection('readings').find().sort({timestamp: 1}).toArray();
-        res.json(history);
-    } catch (err) {
-        res.status(500).json({ error: 'Failed to fetch history' });
-    }
+// Middleware to protect routes
+app.use('/api', (req, res, next) => {
+  if (req.session.authenticated) return next();
+  res.status(401).json({ error: 'Unauthorized' });
 });
 
-// WebSocket for real-time updates
-io.on('connection', (socket) => {
-    console.log('Client connected');
+// API endpoints
+app.get('/api/recipes', async (req, res) => {
+  const recipes = await db.collection('recipes').find().toArray();
+  res.json(recipes);
 });
 
-// Mock data generator (simulates ADS1115 + SG)
-function startMockDataGenerator() {
-    setInterval(async () => {
-        const now = new Date();
-        const last = await db.collection('readings').find().sort({timestamp: -1}).limit(1).toArray();
-        const lastSG = last[0]?.sg || 1.050;
-        const newSG = lastSG > 1.010 ? lastSG - 0.0005 : lastSG;
-        const reading = {
-            timestamp: now,
-            temp: 20 + Math.sin(now.getTime()/60000)*1.5,
-            pressure: 1 + Math.random()*0.05,
-            sg: parseFloat(newSG.toFixed(4))
-        };
-        await db.collection('readings').insertOne(reading);
-        io.emit('reading', reading);
-    }, 5000);
-}
+app.post('/api/recipes', async (req, res) => {
+  const recipe = req.body;
+  await db.collection('recipes').insertOne(recipe);
+  res.json({ success: true });
+});
 
-server.listen(PORT, () => console.log(`Brew SCADA server running on port ${PORT}`));
+app.get('/api/brew_cycles', async (req, res) => {
+  const cycles = await db.collection('brew_cycles').find().sort({ start: -1 }).toArray();
+  res.json(cycles);
+});
+
+// Serve index
+app.get('*', (req, res) => {
+  res.sendFile(path.join(__dirname, '../public/index.html'));
+});
+
+const PORT = 3000;
+server.listen(PORT, () => console.log(`Server listening on port ${PORT}`));

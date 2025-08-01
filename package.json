@@ -1,0 +1,14 @@
+{
+  "name": "brew-scada",
+  "version": "1.0.0",
+  "description": "Brewing SCADA system",
+  "main": "backend/server.js",
+  "scripts": {
+    "start": "node backend/server.js"
+  },
+  "dependencies": {
+    "express": "^4.18.2",
+    "mongodb": "^5.7.0",
+    "socket.io": "^4.7.1"
+  }
+}

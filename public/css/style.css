@@ -1,6 +1,14 @@
-
-#fermenter-diagram {
-  height: 200px;
-  border: 1px dashed #ccc;
-  background: #f9f9f9;
+body {
+  background-color: #121212;
+  color: #e0e0e0;
+}
+.uk-card-default {
+  background-color: #1e1e1e;
+  border-color: #333;
+}
+.uk-navbar-container {
+  background-color: #1a1a1a;
+}
+canvas {
+  background-color: #1e1e1e;
 }
