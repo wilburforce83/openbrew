@@ -1,25 +1,28 @@
 <!DOCTYPE html>
-<html>
+<html lang="en">
 <head>
-  <meta charset="utf-8">
+  <meta charset="UTF-8" />
   <title>Brew SCADA</title>
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
   <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/uikit@3.15.10/dist/css/uikit.min.css" />
-  <script src="https://cdn.jsdelivr.net/npm/uikit@3.15.10/dist/js/uikit.min.js"></script>
-  <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
-  <link rel="stylesheet" href="css/style.css">
+  <link rel="stylesheet" href="css/style.css" />
 </head>
 <body>
+
+  <!-- LOGIN SCREEN -->
   <div id="login-screen" class="uk-flex uk-flex-center uk-flex-middle" style="height:100vh;">
     <div class="uk-card uk-card-default uk-card-body uk-width-medium">
       <h3>Login</h3>
       <form id="loginForm">
-        <input class="uk-input uk-margin" type="password" id="password" placeholder="Password" />
-        <button class="uk-button uk-button-primary" type="submit">Login</button>
+        <input class="uk-input uk-margin-small-bottom" type="password" id="password" placeholder="Password" />
+        <button class="uk-button uk-button-primary uk-width-1-1">Login</button>
       </form>
-      <div id="loginError" class="uk-text-danger uk-hidden">Invalid password</div>
+      <p id="loginError" class="uk-text-danger uk-hidden">Invalid password</p>
     </div>
   </div>
-  <div id="main-ui" class="uk-container uk-hidden">
+
+  <!-- MAIN UI -->
+  <div id="main-ui" class="uk-hidden" uk-height-viewport="expand: true">
     <nav class="uk-navbar-container uk-navbar-dark" uk-navbar>
       <div class="uk-navbar-left">
         <ul class="uk-navbar-nav" id="navButtons">
@@ -31,9 +34,17 @@
         </ul>
       </div>
     </nav>
-    <div id="content" class="uk-margin-top"></div>
+    <div id="content" class="uk-padding-small" style="overflow-y:auto;"></div>
   </div>
+
+  <!-- socket.io and UIkit -->
   <script src="/socket.io/socket.io.js"></script>
+  <script src="https://cdn.jsdelivr.net/npm/uikit@3.15.10/dist/js/uikit.min.js"></script>
+
+  <!-- Add this line for Chart.js -->
+  <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+
+  <!-- Then your app code -->
   <script src="js/app.js"></script>
 </body>
 </html>
